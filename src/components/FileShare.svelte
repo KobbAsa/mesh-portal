@@ -1,5 +1,7 @@
 <script>
     export let files = [];
+    export let serverIP;
+
     let fileInput;
 
     async function handleFileUpload(event) {
@@ -10,7 +12,7 @@
         formData.append('file', file);
 
         try {
-            await fetch('http://localhost:3000/api/upload', {
+            await fetch(`http://${serverIP}:3000/api/upload`, {
                 method: 'POST',
                 body: formData
             });

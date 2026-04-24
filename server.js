@@ -11,6 +11,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+app.use(express.static(path.join(__dirname, 'dist')));
+
 app.use(cors());
 
 const server = createServer(app);
@@ -40,7 +43,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
     const fileData = {
         name: req.file.originalname,
-        url: `http://${req.hostname}:3000/uploads/${req.file.filename}`,
+        url: `/uploads/${req.file.filename}`, // Відносний шлях - надійніше!
         size: req.file.size
     };
 

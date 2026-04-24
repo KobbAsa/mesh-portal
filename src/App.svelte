@@ -7,6 +7,8 @@
   import FileShare from './components/FileShare.svelte';
   import AuthScreen from './components/AuthScreen.svelte';
 
+  const serverIP = window.location.hostname;
+
   let isLoggedIn = false;
   let loginError = "";
   let myIP = "З'єднання...";
@@ -51,7 +53,7 @@
   }
 
   function connectToMesh() {
-    socket = io('http://localhost:3000');
+    socket = io();
 
     socket.on('connect', () => {
       isConnected = true;
@@ -98,7 +100,7 @@
   <main class="dashboard">
     <Sidebar {isConnected} {myIP} {onlineUsers} />
     <Chat {messages} on:send={handleSendMessage} />
-    <FileShare {files} />
+    <FileShare {files} {serverIP} />
   </main>
 {/if}
 
