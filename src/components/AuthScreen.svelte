@@ -3,16 +3,17 @@
 
     let callsign = "";
     let password = "";
-    export let errorMsg = ""; // Сюди прилітатиме помилка з головного файлу
+    export let errorMsg = "";
 
     const dispatch = createEventDispatcher();
 
     function handleLogin() {
+        errorMsg = "";
+
         if (callsign.trim().length >= 2 && password.length >= 1) {
-            // Відправляємо об'єкт з ім'ям та паролем
             dispatch('login', { name: callsign.trim(), pass: password });
         } else {
-            errorMsg = "Введіть позивний та пароль";
+            errorMsg = "Enter your login and password";
         }
     }
 </script>
@@ -21,26 +22,28 @@
     <div class="auth-card">
         <div class="emergency-badge">EMERGENCY ACCESS ONLY</div>
         <h1>MeshNode Terminal</h1>
-        <p>Авторизація в локальному сегменті</p>
+        <p>Authorization in local segment</p>
 
         <div class="input-group">
-            <label for="callsign">Обліковий запис (Callsign)</label>
+            <label for="callsign">Login/Callsign</label>
             <input
                     id="callsign"
                     type="text"
                     bind:value={callsign}
-                    placeholder="Наприклад: admin"
+                    placeholder="For example: commander"
                     autocomplete="off"
+                    maxlength="32"
             />
         </div>
 
         <div class="input-group">
-            <label for="password">Пароль доступу</label>
+            <label for="password">Password</label>
             <input
                     id="password"
                     type="password"
                     bind:value={password}
                     placeholder="••••••••"
+                    maxlength="72"
                     on:keydown={(e) => e.key === 'Enter' && handleLogin()}
             />
         </div>
@@ -50,18 +53,17 @@
         {/if}
 
         <button class="login-btn" on:click={handleLogin}>
-            Ініціалізувати з'єднання
+            Initialize connection
         </button>
 
         <div class="auth-footer">
-            <span>Протокол: B.A.T.M.A.N. Adv</span>
-            <span>Статус: Auth Required</span>
+            <span>Protocol: B.A.T.M.A.N. Adv</span>
+            <span>Status: Auth Required</span>
         </div>
     </div>
 </section>
 
 <style>
-    /* Всі попередні стилі залишаються, додаємо тільки для помилки */
     .auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; background: radial-gradient(circle, #1e293b 0%, #0f172a 100%); }
     .auth-card { background: #141e33; padding: 40px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; max-width: 400px; text-align: center; }
     .emergency-badge { display: inline-block; background: #450a0a; color: #ef4444; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; letter-spacing: 2px; margin-bottom: 20px; border: 1px solid #ef4444; }
@@ -75,6 +77,5 @@
     .login-btn:hover { background: #0ea5e9; transform: translateY(-1px); }
     .auth-footer { margin-top: 30px; display: flex; justify-content: space-between; font-size: 0.7rem; color: #475569; text-transform: uppercase; }
 
-    /* Новий стиль для помилки */
     .error-box { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; }
 </style>
