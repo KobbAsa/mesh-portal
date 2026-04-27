@@ -1,0 +1,22 @@
+[
+  {
+    "callsign": "admin",
+    "passwordHash": "$2b$10$RMyRQmdqxYxNy9zNKsgu3uZyhm8BHwhiF2WH0fx/HEMX5y8NIm0Xm",
+    "role": "admin"
+  },
+  {
+    "callsign": "commander",
+    "passwordHash": "$2b$10$h3e8Hktl3PcqYnA59UHu.OZm8G73XBcbQ6Bl9sFEjfCavZ4vCry8S",
+    "role": "commander"
+  },
+  {
+    "callsign": "diploma1",
+    "passwordHash": "$2b$10$3w.1fzhW0YXWcNse16EReu7PSvaCdMRxcskBstFxCCSk6rnXYN4fS",
+    "role": "user"
+  },
+  {
+  "callsign": "diploma2",
+  "passwordHash": "$2b$10$V1ae8EzhyH2Y79e/M3yqZesbVkSn7PfuHldskZt3FdtHQzyI6zpaO",
+  "role": "user"
+  }
+]

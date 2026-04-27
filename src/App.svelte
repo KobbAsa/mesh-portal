@@ -20,40 +20,57 @@
   let files = [];
   let socket;
 
-  const localADCache = {
-    "admin": "qwerty",
-    "commander": "bunker123",
-    "diploma1": "1111"
-  };
-
   onMount(() => {
+    const savedToken = localStorage.getItem('mesh_token');
     const savedName = localStorage.getItem('mesh_callsign');
-    if (savedName) {
+    if (savedToken && savedName) {
       myName = savedName;
       isLoggedIn = true;
       connectToMesh();
     }
   });
 
-  function handleUserLogin(event) {
+  async function handleUserLogin(event) {
     const { name, pass } = event.detail;
-    const usernameKey = name.toLowerCase();
+    loginError = "";
 
-    if (localADCache[usernameKey] && localADCache[usernameKey] === pass) {
-      loginError = "";
-      myName = name;
-      localStorage.setItem('mesh_callsign', myName);
-      isLoggedIn = true;
-      connectToMesh();
-    } else if (!localADCache[usernameKey]) {
-      loginError = "Обліковий запис не знайдено в локальному кеші.";
-    } else {
-      loginError = "Відмова у доступі: Невірний пароль.";
+    try {
+      const response = await fetch(`http://${serverIP}:3000/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callsign: name, password: pass })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        myName = data.callsign;
+        localStorage.setItem('mesh_callsign', myName);
+        localStorage.setItem('mesh_token', data.token);
+        isLoggedIn = true;
+        connectToMesh();
+      } else {
+        loginError = data.error || "Помилка авторизації";
+      }
+    } catch (error) {
+      loginError = "Сервер недоступний. Перевірте з'єднання з Mesh.";
     }
   }
 
   function connectToMesh() {
-    socket = io();
+    const token = localStorage.getItem('mesh_token');
+
+    socket = io(`http://${serverIP}:3000`, {
+      auth: { token: token }
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error("Помилка підключення:", err.message);
+      loginError = "Сесія закінчилась. Авторизуйтесь знову.";
+      isLoggedIn = false;
+      localStorage.removeItem('mesh_token');
+      localStorage.removeItem('mesh_callsign');
+    });
 
     socket.on('connect', () => {
       isConnected = true;
