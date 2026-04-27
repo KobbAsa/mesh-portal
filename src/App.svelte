@@ -11,7 +11,7 @@
 
   let isLoggedIn = false;
   let loginError = "";
-  let myIP = "З'єднання...";
+  let myIP = "Connecting...";
   let myName = "";
 
   let isConnected = false;
@@ -41,6 +41,11 @@
         body: JSON.stringify({ callsign: name, password: pass })
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new TypeError("Server did not return JSON");
+      }
+
       const data = await response.json();
 
       if (response.ok) {
@@ -50,10 +55,11 @@
         isLoggedIn = true;
         connectToMesh();
       } else {
-        loginError = data.error || "Помилка авторизації";
+        loginError = data.error || "Authorization failed";
       }
     } catch (error) {
-      loginError = "Сервер недоступний. Перевірте з'єднання з Mesh.";
+      console.error("Login Error:", error);
+      loginError = "Server unreachable. Check Mesh connection.";
     }
   }
 
@@ -65,8 +71,8 @@
     });
 
     socket.on('connect_error', (err) => {
-      console.error("Помилка підключення:", err.message);
-      loginError = "Сесія закінчилась. Авторизуйтесь знову.";
+      console.error("Connection error:", err.message);
+      loginError = "Session expired. Please log in again.";
       isLoggedIn = false;
       localStorage.removeItem('mesh_token');
       localStorage.removeItem('mesh_callsign');
@@ -97,7 +103,7 @@
     socket.on('message', (msg) => {
       if (msg.sender === myName) {
         msg.type = 'sent';
-        msg.sender = 'Ти';
+        msg.sender = 'You';
       }
       messages = [...messages, msg];
     });
@@ -122,12 +128,6 @@
 {/if}
 
 <style>
-  :global(body) {
-    margin: 0;
-    font-family: 'Inter', system-ui, sans-serif;
-    background-color: #0f172a;
-    color: #e2e8f0;
-  }
 
   .dashboard {
     display: grid;
@@ -135,4 +135,5 @@
     height: 100vh;
     overflow: hidden;
   }
+
 </style>
