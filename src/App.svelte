@@ -107,6 +107,18 @@
       }
       messages = [...messages, msg];
     });
+
+    socket.on('history_messages', (history) => {
+      messages = history.map(msg => ({
+        ...msg,
+        type: msg.sender === myName ? 'sent' : 'received',
+        sender: msg.sender === myName ? 'You' : msg.sender
+      }));
+    });
+
+    socket.on('history_files', (history) => {
+      files = history;
+    });
   }
 
   function handleSendMessage(event) {

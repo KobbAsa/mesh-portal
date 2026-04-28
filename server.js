@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import db, { runRotation } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,9 @@ app.use(express.json());
 
 const server = createServer(app);
 const io = new Server(server, { cors: corsOptions });
+
+setInterval(runRotation, 24 * 60 * 60 * 1000);
+runRotation();
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -115,8 +119,14 @@ app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
         uploader: req.user.callsign
     };
 
-    io.emit('new_file', fileData);
-    res.status(200).json({ message: 'Success', file: fileData });
+    db.run(`INSERT INTO files (name, url, size, uploader) VALUES (?, ?, ?, ?)`,
+        [fileData.name, fileData.url, fileData.size, fileData.uploader],
+        function(err) {
+            if (err) return res.status(500).json({ error: "DB Error" });
+            io.emit('new_file', fileData);
+            res.status(200).json({ message: 'Success', file: fileData });
+        }
+    );
 });
 
 let onlineUsers = {};
@@ -143,15 +153,41 @@ io.on('connection', (socket) => {
     socket.on('join', (userData) => {
         const user = { name: verifiedCallsign, ip: clientIp, status: 'online' };
         onlineUsers[socket.id] = user;
+
         socket.emit('joined', user);
         io.emit('users_update', Object.values(onlineUsers));
         socket.broadcast.emit('message', { type: 'system', text: `Node ${user.name} (${user.ip}) has joined` });
+
+        db.all(`SELECT sender, text, 'received' as type FROM messages ORDER BY timestamp DESC LIMIT 50`, [], (err, rows) => {
+            if (!err) {
+                socket.emit('history_messages', rows.reverse());
+            } else {
+                console.error("[-] DB Error (Read Messages):", err.message);
+            }
+        });
+
+        db.all(`SELECT name, url, size FROM files ORDER BY timestamp DESC LIMIT 50`, [], (err, rows) => {
+            if (!err) {
+                socket.emit('history_files', rows.reverse());
+            } else {
+                console.error("[-] DB Error (Read Files):", err.message);
+            }
+        });
     });
 
     socket.on('send_message', (text) => {
         const sender = onlineUsers[socket.id];
         if (sender) {
-            io.emit('message', { type: 'received', sender: sender.name, text: text });
+            db.run(`INSERT INTO messages (type, sender, text) VALUES (?, ?, ?)`,
+                ['received', sender.name, text],
+                function(err) {
+                    if (err) {
+                        console.error("[-] DB Error (Write Message):", err.message);
+                    } else {
+                        io.emit('message', { type: 'received', sender: sender.name, text: text });
+                    }
+                }
+            );
         }
     });
 
