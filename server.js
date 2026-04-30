@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db, { runRotation } from './database.js';
+import { logAudit } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,26 +86,32 @@ const requireAuth = (req, res, next) => {
 };
 
 app.post('/api/login', async (req, res) => {
-    try {
-        const { callsign, password } = req.body;
+    const callsign = req.body?.callsign || 'UNKNOWN';
+    const password = req.body?.password;
 
+    try {
         const user = usersDB.find(u => u.callsign.toLowerCase() === callsign.toLowerCase());
+
         if (!user) {
+            logAudit('AUTH', callsign, req.ip, { action: 'login_failed', reason: 'account_not_found' });
             return res.status(401).json({ error: 'Account not found' });
         }
 
         const validPassword = await bcrypt.compare(password, user.passwordHash);
 
         if (!validPassword) {
+            logAudit('AUTH', callsign, req.ip, { action: 'login_failed', reason: 'invalid_password' });
             return res.status(401).json({ error: 'Access denied: Invalid password' });
         }
 
         const token = jwt.sign({ callsign: user.callsign, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
 
-        console.log(`[+] Auth Success: ${user.callsign}`);
+        logAudit('AUTH', user.callsign, req.ip, { action: 'login_success' });
+
         res.json({ token, callsign: user.callsign });
     } catch (error) {
         console.error("[-] Login Error:", error);
+        logAudit('AUTH', callsign, req.ip, { action: 'login_error', error_details: error.message });
         res.status(500).json({ error: 'Internal server error during authentication' });
     }
 });
@@ -123,6 +130,13 @@ app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
         [fileData.name, fileData.url, fileData.size, fileData.uploader],
         function(err) {
             if (err) return res.status(500).json({ error: "DB Error" });
+
+            logAudit('FILE', req.user.callsign, req.ip, {
+                action: 'upload',
+                fileName: fileData.name,
+                bytesTransferred: fileData.size
+            });
+
             io.emit('new_file', fileData);
             res.status(200).json({ message: 'Success', file: fileData });
         }
@@ -158,6 +172,8 @@ io.on('connection', (socket) => {
         io.emit('users_update', Object.values(onlineUsers));
         socket.broadcast.emit('message', { type: 'system', text: `Node ${user.name} (${user.ip}) has joined` });
 
+        logAudit('NETWORK', verifiedCallsign, clientIp, { action: 'node_connected' });
+
         db.all(`SELECT sender, text, 'received' as type FROM messages ORDER BY timestamp DESC LIMIT 50`, [], (err, rows) => {
             if (!err) {
                 socket.emit('history_messages', rows.reverse());
@@ -188,6 +204,10 @@ io.on('connection', (socket) => {
                     }
                 }
             );
+            logAudit('CHAT', sender.name, clientIp, {
+                action: 'message_sent',
+                messageLength: text.length
+            });
         }
     });
 
@@ -198,6 +218,7 @@ io.on('connection', (socket) => {
             delete onlineUsers[socket.id];
             io.emit('users_update', Object.values(onlineUsers));
             socket.broadcast.emit('message', { type: 'system', text: `Node ${user.name} went offline` });
+            logAudit('NETWORK', user.name, user.ip, { action: 'node_disconnected' });
         }
     });
 });
