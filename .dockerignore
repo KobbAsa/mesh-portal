@@ -1,0 +1,8 @@
+node_modules
+dist
+npm-debug.log
+.env
+mesh_data.sqlite
+mesh_audit.log
+uploads
+utils
